@@ -1,0 +1,91 @@
+			Run ARMv8 foundation model with your own kernel
+
+1. Introduction about ARMv8 foundation model
+
+The ARMv8 foundation Platform is a virtual platform incorporating an AArch64
+architecture simulation model along with essential peripherals for running a
+Linux operating system. Multicore is configurable out-of-the-box, along with
+4GB memory of simulation memory, persistent storage, networking and basic
+instruction trace. Debug is via a GDB connection to a server running on the
+platform. The host platform support is 64-bit Linux.
+
+Q: Why transition from Fast model to foundation model? What is the difference
+between them?
+
+A: Firstly, most of us can't get license file for aarch64 fast model. And here
+is the difference:
+1. Fast Models is used to support full platform customization to meet individual
+SoC requirements.
+2. Foundation model is a virtual platform incorporating an AArch64 simulation
+model along with essential peripherals, which means it is fixed platform if you
+compared with Fast model, and it can't be customized as Fast model too.
+
+Download Foundation_v8 (FM000-KT-00035-r9p2-28rel0.tgz) from
+www.arm.com/fvp (need registration to be able to download it).
+
+2. Boot wrapper
+
+Clone Boot-wrapper tree from the following tree.
+
+git://git.kernel.org/pub/scm/linux/kernel/git/cmarinas/boot-wrapper-aarch64.git
+
+Note: need to reset the tree to commit 47cdf0 "Add CFLAGS to makefile compile"
+
+3. ARMv8 toolchain
+
+Download toolchain from linaro website, such as:
+
+wget http://releases.linaro.org/14.11/components/toolchain/binaries/aarch64-linux-gnu/gcc-linaro-4.9-2014.11-x86_64_aarch64-linux-gnu.tar.xz
+
+4. Kernel
+
+git clone git://git.linaro.org/kernel/linux-linaro-tracking.git
+
+Switch to branch linux-linaro, and create a kernel config as follows.
+
+ARCH=arm64 scripts/kconfig/merge_config.sh \
+     linaro/configs/linaro-base.conf \
+     linaro/configs/distribution.conf \
+     linaro/configs/vexpress64.conf \
+     linaro/configs/kvm-host.conf \
+     linaro/configs/kvm-guest.conf
+
+Then build the kernel and dtbs.
+
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- Image -j4
+make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- dtbs
+
+Copy the kernel and the DTB files to your foundation model directory created in
+the Binary Installation.
+
+cp arch/arm64/boot/Image <fastmodel dir>
+cp arch/arm64/boot/dts/*.dtb <fastmodel dir>
+
+5. Download the pre-built rootfs img
+There are lots of different pre-built imgs for you to fetch, you can download
+it from Linaro, openSUSE and Fedora etc.
+
+6. Time to run your own kernel.
+
+Enter into foundation model, generate the axf file and run it.
+
+make CROSS_COMPILE=aarch64-linux-gnu- BOOTARGS='"root=/dev/vda2 consolelog=9 rw console=ttyAMA0"' FDT_SRC=$LINARO_TREE/arch/arm64/boot/dts/arm/foundation-v8.dts IMAGE=linux-system.axf
+
+$(Foundation_mode)/models/Linux64_GCC-4.1/Foundation_Platform --image linux-system.axf --block-device /home/gjiang/fastmodel-hackweek12/linaro-bins/vexpress64-openembedded_lamp-armv8-gcc-4.9_20150324-715.img  --network=nat
+
+
+Reference URL:
+1. Fedora
+https://fedoraproject.org/wiki/Architectures/AArch64/Archive/FASTandNFS
+https://fedoraproject.org/wiki/Architectures/AArch64/FoundationModelQuickStart
+2. Linaro
+http://www.linaro.org/projects/armv8/
+http://performance.linaro.org/setup/
+3. Xen
+http://wiki.xen.org/wiki/Xen_ARM_with_Virtualization_Extensions/FastModels
+http://community.arm.com/groups/processors/blog/2014/03/28/virtualization-on-arm-with-xen
+4. openSUSE
+https://en.opensuse.org/Portal:ARM/AArch64
+https://en.opensuse.org/openSUSE:AArch64#QEMU_.28supporting_armv8.29_2
+5. misc
+http://www.cnx-software.com/2012/11/06/getting-started-with-64-bit-arm-development-hello-world-and-linux-on-armv8-fast-models/
